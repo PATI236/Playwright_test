@@ -12,7 +12,7 @@ on:
       - playwright.config.ts
       - package.json
       - package-lock.json
-      - .github/workflows/playwright-tests.yml
+      - .github/workflows/playwright.yml
 
   pull_request:
     branches:
