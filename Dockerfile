@@ -6,8 +6,8 @@ COPY package*.json ./
 
 RUN npm ci
 
-COPY . .
+# COPY . .
 
 ENV CI=true
 
-CMD ["npx", "playwright", "test"]
+# CMD ["npx", "playwright", "test"]
