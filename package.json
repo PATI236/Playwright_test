@@ -2,7 +2,10 @@
   "name": "playwright",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "test:dev": "set \"ENV=dev\" && set \"CI=true\" && npx playwright test",
+    "test:staging": "set \"ENV=staging\" && set \"CI=true\" && npx playwright test"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -12,6 +15,7 @@
     "@types/node": "^26.0.0"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "playwright": "^1.61.0"
   }
 }
