@@ -11,3 +11,5 @@ COPY . .
 ENV CI=true
 
 CMD ["npx", "playwright", "test"]
+
+
