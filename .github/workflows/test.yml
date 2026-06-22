@@ -48,10 +48,18 @@ jobs:
             # - name: Build and push
             #   uses: docker/build-push-action@v6
 
+            # - name: Check BASE_URL
+            #   run: |
+            #     if [ -z "${{ vars.BASE_URL }}" ]; then
+            #       echo "BASE_URL environment variable is not configured."
+            #       exit 1
+            #     fi
+
             - name: Run tests
               run: |
                 docker run --rm \
-                -v ${{github.workspace}}/playwright-report:/app/playwright-report \
+                -e BASE_URL="${{ vars.BASE_URL }}" \
+                -v ${{ github.workspace }}/playwright-report:/app/playwright-report \
                 playwright_tests_suite
 
             - name: Upload report
