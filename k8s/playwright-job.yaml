@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: playwright-tests
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: playwright
+          image: playwright-tests:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CI
+              value: "true"
+            - name: ENV
+              value: dev
+            - name: BASE_URL
+              value: https://www.saucedemo.com
+            - name: USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: playwright-secrets
+                  key: USERNAME
+                  optional: true
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: playwright-secrets
+                  key: PASSWORD
+                  optional: true
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - name: shared-memory
+              mountPath: /dev/shm
+      volumes:
+        - name: shared-memory
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi

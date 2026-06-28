@@ -1,0 +1,17 @@
+services:
+  playwright:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: playwright-tests:local
+    working_dir: /app
+    env_file:
+      - .env.${ENV:-dev}
+    environment:
+      CI: "true"
+      ENV: ${ENV:-dev}
+    shm_size: "1gb"
+    volumes:
+      - ./playwright-report:/app/playwright-report
+      - ./test-results:/app/test-results
+    command: ["npx", "playwright", "test"]

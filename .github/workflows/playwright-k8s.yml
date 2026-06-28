@@ -1,0 +1,104 @@
+name: Playwright Kubernetes
+
+on:
+  push:
+    branches:
+      - feature_branch
+
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.env }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [dev, staging]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create local Kubernetes cluster
+        uses: helm/kind-action@v1
+
+      - name: Build Playwright image
+        run: docker build -t playwright-tests:local .
+
+      - name: Load image into Kubernetes
+        run: kind load docker-image playwright-tests:local
+
+      - name: Remove previous Playwright job
+        run: kubectl delete job playwright-tests-${{ matrix.env }} --ignore-not-found
+
+      - name: Create Playwright secrets
+        env:
+          USERNAME: ${{ secrets.USERNAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+        run: |
+          kubectl create secret generic playwright-secrets \
+            --from-literal=USERNAME="$USERNAME" \
+            --from-literal=PASSWORD="$PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Run Playwright job
+        env:
+          BASE_URL: ${{ vars.BASE_URL }}
+          ENV: ${{ matrix.env }}
+        run: |
+          BASE_URL="${BASE_URL:-https://www.saucedemo.com}"
+          cp k8s/playwright-job.yaml playwright-job-${ENV}.yaml
+          sed -i "s/name: playwright-tests/name: playwright-tests-${ENV}/" playwright-job-${ENV}.yaml
+          sed -i "s/value: dev/value: ${ENV}/" playwright-job-${ENV}.yaml
+          sed -i "s|value: https://www.saucedemo.com|value: ${BASE_URL}|" playwright-job-${ENV}.yaml
+          kubectl apply -f playwright-job-${ENV}.yaml
+
+      - name: Wait for Playwright job
+        run: kubectl wait --for=condition=complete --timeout=300s job/playwright-tests-${{ matrix.env }}
+
+      - name: Show Kubernetes status
+        if: always()
+        run: kubectl get jobs,pods
+
+      - name: Show Playwright logs
+        if: always()
+        run: kubectl logs job/playwright-tests-${{ matrix.env }} --all-containers || true
+
+      - name: Copy Playwright artifacts from pod
+        if: always()
+        run: |
+          POD_NAME=$(kubectl get pods -l job-name=playwright-tests-${{ matrix.env }} -o jsonpath='{.items[0].metadata.name}')
+          if [ -z "$POD_NAME" ]; then
+            echo "No Playwright pod found for artifact copy."
+            exit 0
+          fi
+          mkdir -p artifacts/${{ matrix.env }}
+          kubectl cp "$POD_NAME:/app/playwright-report" "artifacts/${{ matrix.env }}/playwright-report" || true
+          kubectl cp "$POD_NAME:/app/test-results" "artifacts/${{ matrix.env }}/test-results" || true
+
+      - name: Upload Playwright HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.env }}
+          path: artifacts/${{ matrix.env }}/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.env }}
+          path: artifacts/${{ matrix.env }}/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
