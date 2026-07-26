@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - feature_branch
-  schedule:
-    - cron: "2-59/5 * * * *"
+  # schedule:
+  #   - cron: "2-59/5 * * * *"
   pull_request:
     branches:
       - main
@@ -89,9 +89,10 @@ jobs:
             -e PASSWORD \
             -e ENV \
             -v "${{ github.workspace }}:/app" \
+            -v /app/node_modules \
             -w /app \
             "$IMAGE_REPO:$IMAGE_TAG" \
-            bash -c "npm ci && CI=true npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}"
+            bash -c "CI=true npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}"
 
       - name: Upload Playwright HTML Report
         if: always()
